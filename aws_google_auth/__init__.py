@@ -11,7 +11,6 @@ import keyring
 from six import print_ as print
 from tzlocal import get_localzone
 
-from aws_google_auth import _version
 from aws_google_auth import amazon
 from aws_google_auth import configuration
 from aws_google_auth import google
@@ -50,7 +49,7 @@ def parse_args(args):
     parser.add_argument('-l', '--log', dest='log_level', choices=['debug',
                         'info', 'warn'], default='warn', help='Select log level (default: %(default)s)')
     parser.add_argument('-V', '--version', action='version',
-                        version='%(prog)s {version}'.format(version=_version.__version__))
+                        version='%(prog)s {version}'.format(version='not set'))
 
     return parser.parse_args(args)
 

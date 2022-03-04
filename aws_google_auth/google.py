@@ -19,8 +19,6 @@ from requests import HTTPError
 from six import print_ as print
 from six.moves import urllib_parse, input
 
-from aws_google_auth import _version
-
 # The U2F USB Library is optional, if it's there, include it.
 try:
     from aws_google_auth import u2f
@@ -48,7 +46,7 @@ class Google:
         duration_seconds: number of seconds for the session to be active (max 43200)
         """
 
-        self.version = _version.__version__
+        self.version = 'not set'
         self.config = config
         self.base_url = 'https://accounts.google.com'
         self.save_failure = save_failure
