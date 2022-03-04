@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
-
 import getpass
 import os
 import sys
 from collections import OrderedDict
 
-from six.moves import input
 from tabulate import tabulate
 
 
@@ -20,7 +17,7 @@ class Util:
     @staticmethod
     def pick_a_role(roles, aliases=None, account=None):
         if account:
-            filtered_roles = {role: principal for role, principal in roles.items() if(account in role)}
+            filtered_roles = {role: principal for role, principal in roles.items() if (account in role)}
         else:
             filtered_roles = roles
 
@@ -84,11 +81,11 @@ class Util:
         return None
 
     @staticmethod
-    def unicode_to_string_if_needed(object):
-        if "unicode" in str(object.__class__):
-            return object.encode('utf-8')
+    def unicode_to_string_if_needed(obj):
+        if "unicode" in str(obj.__class__):
+            return obj.encode('utf-8')
         else:
-            return object
+            return obj
 
     @staticmethod
     def get_password(prompt):

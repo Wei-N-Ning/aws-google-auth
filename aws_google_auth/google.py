@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from __future__ import print_function
 
 import base64
 import io
@@ -9,15 +8,14 @@ import logging
 import os
 import re
 import sys
+from datetime import datetime
+from distutils.spawn import find_executable
 
 import requests
 from PIL import Image
-from datetime import datetime
-from distutils.spawn import find_executable
 from bs4 import BeautifulSoup
 from requests import HTTPError
-from six import print_ as print
-from six.moves import urllib_parse, input
+from six.moves import urllib_parse
 
 # The U2F USB Library is optional, if it's there, include it.
 try:
@@ -358,7 +356,8 @@ class Google:
                 with open("saml.html", 'wb') as out:
                     out.write(self.session_state.text.encode('utf-8'))
 
-            raise ExpectedGoogleException('Something went wrong - Could not find SAML response, check your credentials or use --save-failure-html to debug.')
+            raise ExpectedGoogleException(
+                'Something went wrong - Could not find SAML response, check your credentials or use --save-failure-html to debug.')
 
         return base64.b64decode(saml_element)
 
@@ -408,10 +407,7 @@ class Google:
             except Exception:
                 pass
 
-        try:
-            captcha_input = raw_input("Captcha (case insensitive): ") or None
-        except NameError:
-            captcha_input = input("Captcha (case insensitive): ") or None
+        captcha_input = input("Captcha (case insensitive): ") or None
 
         # Update the payload
         payload['identifier-captcha-input'] = captcha_input
@@ -451,19 +447,24 @@ class Google:
         facet_url = urllib_parse.urlparse(challenge_url)
         facet = facet_url.scheme + "://" + facet_url.netloc
 
-        keyHandleJSField = response_page.find('div', {'jsname': 'C0oDBd'}).get('data-challenge-ui')
-        startJSONPosition = keyHandleJSField.find('{')
-        endJSONPosition = keyHandleJSField.rfind('}')
-        keyHandleJsonPayload = json.loads(keyHandleJSField[startJSONPosition:endJSONPosition + 1])
+        key_handle_js_field = response_page.find('div', {'jsname': 'C0oDBd'}).get('data-challenge-ui')
+        start_json_position = key_handle_js_field.find('{')
+        end_json_position = key_handle_js_field.rfind('}')
+        key_handle_json_payload = json.loads(key_handle_js_field[start_json_position:end_json_position + 1])
 
-        keyHandles = self.find_key_handles(keyHandleJsonPayload, base64.urlsafe_b64encode(base64.b64decode(challenges_txt)))
-        appId = self.find_app_id(str(keyHandleJsonPayload))
+        key_handles = self.find_key_handles(key_handle_json_payload,
+                                            base64.urlsafe_b64encode(base64.b64decode(challenges_txt)))
+        app_id = self.find_app_id(str(key_handle_json_payload))
 
         # txt sent for signing needs to be base64 url encode
-        # we also have to remove any base64 padding because including including it will prevent google accepting the auth response
-        challenges_txt_encode_pad_removed = base64.urlsafe_b64encode(base64.b64decode(challenges_txt)).strip('='.encode())
+        # we also have to remove any base64 padding because including including it will prevent google
+        # accepting the auth response
+        challenges_txt_encode_pad_removed = base64.urlsafe_b64encode(base64.b64decode(challenges_txt)).strip(
+            '='.encode())
 
-        u2f_challenges = [{'version': 'U2F_V2', 'challenge': challenges_txt_encode_pad_removed.decode(), 'appId': appId, 'keyHandle': keyHandle.decode()} for keyHandle in keyHandles]
+        u2f_challenges = [
+            {'version': 'U2F_V2', 'challenge': challenges_txt_encode_pad_removed.decode(), 'app_id': app_id,
+             'keyHandle': keyHandle.decode()} for keyHandle in key_handles]
 
         # Prompt the user up to attempts_remaining times to insert their U2F device.
         attempts_remaining = 5
@@ -491,43 +492,43 @@ class Google:
 
         payload = {
             'challengeId':
-            response_page.find('input', {
-                'name': 'challengeId'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'challengeId'
+                }).get('value'),
             'challengeType':
-            response_page.find('input', {
-                'name': 'challengeType'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'challengeType'
+                }).get('value'),
             'continue': response_page.find('input', {
                 'name': 'continue'
             }).get('value'),
             'scc':
-            response_page.find('input', {
-                'name': 'scc'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'scc'
+                }).get('value'),
             'sarp':
-            response_page.find('input', {
-                'name': 'sarp'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'sarp'
+                }).get('value'),
             'checkedDomains':
-            response_page.find('input', {
-                'name': 'checkedDomains'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'checkedDomains'
+                }).get('value'),
             'pstMsg': '1',
             'TL':
-            response_page.find('input', {
-                'name': 'TL'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'TL'
+                }).get('value'),
             'gxf':
-            response_page.find('input', {
-                'name': 'gxf'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'gxf'
+                }).get('value'),
             'id-challenge':
-            challenges_txt,
+                challenges_txt,
             'id-assertion':
-            auth_response,
+                auth_response,
             'TrustDevice':
-            'on',
+                'on',
         }
         return self.post(challenge_url, data=payload)
 
@@ -595,51 +596,51 @@ class Google:
 
         payload = {
             'challengeId':
-            response_page.find('input', {
-                'name': 'challengeId'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'challengeId'
+                }).get('value'),
             'challengeType':
-            response_page.find('input', {
-                'name': 'challengeType'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'challengeType'
+                }).get('value'),
             'continue':
-            response_page.find('input', {
-                'name': 'continue'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'continue'
+                }).get('value'),
             'scc':
-            response_page.find('input', {
-                'name': 'scc'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'scc'
+                }).get('value'),
             'sarp':
-            response_page.find('input', {
-                'name': 'sarp'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'sarp'
+                }).get('value'),
             'checkedDomains':
-            response_page.find('input', {
-                'name': 'checkedDomains'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'checkedDomains'
+                }).get('value'),
             'checkConnection':
-            'youtube:1295:1',
+                'youtube:1295:1',
             'pstMsg':
-            response_page.find('input', {
-                'name': 'pstMsg'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'pstMsg'
+                }).get('value'),
             'TL':
-            response_page.find('input', {
-                'name': 'TL'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'TL'
+                }).get('value'),
             'gxf':
-            response_page.find('input', {
-                'name': 'gxf'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'gxf'
+                }).get('value'),
             'token':
-            parsed_response['txToken'],
+                parsed_response['txToken'],
             'action':
-            response_page.find('input', {
-                'name': 'action'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'action'
+                }).get('value'),
             'TrustDevice':
-            'on',
+                'on',
         }
 
         return self.post(challenge_url, data=payload)
@@ -730,43 +731,43 @@ class Google:
 
         payload = {
             'challengeId':
-            response_page.find('input', {
-                'name': 'challengeId'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'challengeId'
+                }).get('value'),
             'challengeType':
-            response_page.find('input', {
-                'name': 'challengeType'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'challengeType'
+                }).get('value'),
             'continue':
-            self.cont,
+                self.cont,
             'scc':
-            response_page.find('input', {
-                'name': 'scc'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'scc'
+                }).get('value'),
             'sarp':
-            response_page.find('input', {
-                'name': 'sarp'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'sarp'
+                }).get('value'),
             'checkedDomains':
-            response_page.find('input', {
-                'name': 'checkedDomains'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'checkedDomains'
+                }).get('value'),
             'pstMsg':
-            response_page.find('input', {
-                'name': 'pstMsg'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'pstMsg'
+                }).get('value'),
             'TL':
-            response_page.find('input', {
-                'name': 'TL'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'TL'
+                }).get('value'),
             'gxf':
-            response_page.find('input', {
-                'name': 'gxf'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'gxf'
+                }).get('value'),
             'phoneNumber':
-            phone_number,
+                phone_number,
             'sendMethod':
-            send_method,
+                send_method,
         }
 
         # Submit phone number and desired method (SMS or voice call)
@@ -779,43 +780,43 @@ class Google:
 
         payload = {
             'challengeId':
-            response_page.find('input', {
-                'name': 'challengeId'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'challengeId'
+                }).get('value'),
             'challengeType':
-            response_page.find('input', {
-                'name': 'challengeType'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'challengeType'
+                }).get('value'),
             'continue':
-            response_page.find('input', {
-                'name': 'continue'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'continue'
+                }).get('value'),
             'scc':
-            response_page.find('input', {
-                'name': 'scc'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'scc'
+                }).get('value'),
             'sarp':
-            response_page.find('input', {
-                'name': 'sarp'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'sarp'
+                }).get('value'),
             'checkedDomains':
-            response_page.find('input', {
-                'name': 'checkedDomains'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'checkedDomains'
+                }).get('value'),
             'pstMsg':
-            response_page.find('input', {
-                'name': 'pstMsg'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'pstMsg'
+                }).get('value'),
             'TL':
-            response_page.find('input', {
-                'name': 'TL'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'TL'
+                }).get('value'),
             'gxf':
-            response_page.find('input', {
-                'name': 'gxf'
-            }).get('value'),
+                response_page.find('input', {
+                    'name': 'gxf'
+                }).get('value'),
             'pin':
-            token,
+                token,
         }
 
         # Submit SMS/VOICE token
