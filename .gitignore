@@ -8,3 +8,6 @@ build/
 Pipfile
 Pipfile.lock
 venv/*
+*~
+.venv
+dist
