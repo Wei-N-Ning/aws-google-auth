@@ -12,7 +12,7 @@ from aws_google_auth import util
 
 class Configuration(object):
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.options = {}
         self.__boto_session = botocore.session.Session()
 
