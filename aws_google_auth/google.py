@@ -15,14 +15,6 @@ import requests
 from PIL import Image
 from bs4 import BeautifulSoup
 from requests import HTTPError
-from urllib import parse as urllib_parse
-
-# The U2F USB Library is optional, if it's there, include it.
-try:
-    from aws_google_auth import u2f
-except ImportError:
-    logging.info("Failed to import U2F libraries, U2F login unavailable. "
-                 "Other methods can still continue.")
 
 
 class ExpectedGoogleException(Exception):
@@ -323,7 +315,7 @@ class Google:
         elif "challenge/az/" in sess.url:
             sess = self.handle_prompt(sess)
         elif "challenge/sk/" in sess.url:
-            sess = self.handle_sk(sess)
+            raise NotImplementedError('challenge type sk is not supported')
         elif "challenge/iap/" in sess.url:
             sess = self.handle_iap(sess)
         elif "challenge/dp/" in sess.url:
@@ -439,99 +431,6 @@ class Google:
             newPayload['TrustDevice'] = 'on'
 
         return self.post(response.url, data=newPayload)
-
-    def handle_sk(self, sess):
-        response_page = BeautifulSoup(sess.text, 'html.parser')
-        challenge_url = sess.url.split("?")[0]
-        challenges_txt = response_page.find('input', {
-            'name': "id-challenge"
-        }).get('value')
-
-        facet_url = urllib_parse.urlparse(challenge_url)
-        facet = facet_url.scheme + "://" + facet_url.netloc
-
-        key_handle_js_field = response_page.find('div', {'jsname': 'C0oDBd'}).get('data-challenge-ui')
-        start_json_position = key_handle_js_field.find('{')
-        end_json_position = key_handle_js_field.rfind('}')
-        key_handle_json_payload = json.loads(key_handle_js_field[start_json_position:end_json_position + 1])
-
-        key_handles = self.find_key_handles(key_handle_json_payload,
-                                            base64.urlsafe_b64encode(base64.b64decode(challenges_txt)))
-        app_id = self.find_app_id(str(key_handle_json_payload))
-
-        # txt sent for signing needs to be base64 url encode
-        # we also have to remove any base64 padding because including including it will prevent google
-        # accepting the auth response
-        challenges_txt_encode_pad_removed = base64.urlsafe_b64encode(base64.b64decode(challenges_txt)).strip(
-            '='.encode())
-
-        u2f_challenges = [
-            {'version': 'U2F_V2', 'challenge': challenges_txt_encode_pad_removed.decode(), 'app_id': app_id,
-             'keyHandle': keyHandle.decode()} for keyHandle in key_handles]
-
-        # Prompt the user up to attempts_remaining times to insert their U2F device.
-        attempts_remaining = 5
-        auth_response = None
-        while True:
-            try:
-                auth_response_dict = u2f.u2f_auth(u2f_challenges, facet)
-                auth_response = json.dumps(auth_response_dict)
-                break
-            except RuntimeWarning:
-                logging.error("No U2F device found. %d attempts remaining",
-                              attempts_remaining)
-                if attempts_remaining <= 0:
-                    break
-                else:
-                    input(
-                        "Insert your U2F device and press enter to try again..."
-                    )
-                    attempts_remaining -= 1
-        # If we exceed the number of attempts, raise an error and let the program exit.
-        if auth_response is None:
-            raise ExpectedGoogleException("No U2F device found. Please check your setup.")
-
-        payload = {
-            'challengeId':
-                response_page.find('input', {
-                    'name': 'challengeId'
-                }).get('value'),
-            'challengeType':
-                response_page.find('input', {
-                    'name': 'challengeType'
-                }).get('value'),
-            'continue': response_page.find('input', {
-                'name': 'continue'
-            }).get('value'),
-            'scc':
-                response_page.find('input', {
-                    'name': 'scc'
-                }).get('value'),
-            'sarp':
-                response_page.find('input', {
-                    'name': 'sarp'
-                }).get('value'),
-            'checkedDomains':
-                response_page.find('input', {
-                    'name': 'checkedDomains'
-                }).get('value'),
-            'pstMsg': '1',
-            'TL':
-                response_page.find('input', {
-                    'name': 'TL'
-                }).get('value'),
-            'gxf':
-                response_page.find('input', {
-                    'name': 'gxf'
-                }).get('value'),
-            'id-challenge':
-                challenges_txt,
-            'id-assertion':
-                auth_response,
-            'TrustDevice':
-                'on',
-        }
-        return self.post(challenge_url, data=payload)
 
     def handle_sms(self, sess):
         response_page = BeautifulSoup(sess.text, 'html.parser')
