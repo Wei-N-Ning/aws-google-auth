@@ -75,10 +75,7 @@ class Util:
     # returned.
     @staticmethod
     def coalesce(*args):
-        for _, value in enumerate(args):
-            if value is not None:
-                return value
-        return None
+        return args[0] if len(args) and args[0] is not None else None
 
     @staticmethod
     def unicode_to_string_if_needed(obj):
