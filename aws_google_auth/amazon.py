@@ -64,14 +64,10 @@ class Amazon:
         return self.token['Credentials']['Expiration']
 
     def print_export_line(self):
-        export_template = "export AWS_ACCESS_KEY_ID='{}' AWS_SECRET_ACCESS_KEY='{}' AWS_SESSION_TOKEN='{}' AWS_SESSION_EXPIRATION='{}'"
-
-        formatted = export_template.format(
-            self.access_key_id,
-            self.secret_access_key,
-            self.session_token,
-            self.expiration.strftime('%Y-%m-%dT%H:%M:%S%z'))
-
+        formatted = f"""export AWS_ACCESS_KEY_ID='{self.access_key_id}'
+export AWS_SECRET_ACCESS_KEY='{self.secret_access_key}'
+export AWS_SESSION_TOKEN='{self.session_token}'
+export AWS_SESSION_EXPIRATION='{self.expiration.strftime('%Y-%m-%dT%H:%M:%S%z')}'"""
         print(formatted)
 
     @property
@@ -96,9 +92,10 @@ class Amazon:
         if self.config.auto_duration and auto_duration:
             sts_call_vars['DurationSeconds'] = self.config.max_duration
             try:
-                res = self.sts_client.assume_role_with_saml(**sts_call_vars)
+                self.sts_client.assume_role_with_saml(**sts_call_vars)
             except ClientError as err:
-                if (err.response.get('Error', []).get('Code') == 'ValidationError' and err.response.get('Error', []).get('Message')):
+                if (err.response.get('Error', []).get('Code') == 'ValidationError'
+                        and err.response.get('Error', []).get('Message')):
                     m = re.search(
                         'Member must have value less than or equal to ([0-9]{3,5})',
                         err.response['Error']['Message']
@@ -119,12 +116,12 @@ class Amazon:
         return res
 
     def resolve_aws_aliases(self, roles):
-        def resolve_aws_alias(role, principal, aws_dict):
+        def resolve_aws_alias(_role, _principal, aws_dict):
             session = boto3.session.Session(region_name=self.config.region)
 
             sts = session.client('sts')
-            saml = sts.assume_role_with_saml(RoleArn=role,
-                                             PrincipalArn=principal,
+            saml = sts.assume_role_with_saml(RoleArn=_role,
+                                             PrincipalArn=_principal,
                                              SAMLAssertion=self.base64_encoded_saml)
 
             iam = session.client('iam',
@@ -134,7 +131,7 @@ class Amazon:
             try:
                 response = iam.list_account_aliases()
                 account_alias = response['AccountAliases'][0]
-                aws_dict[role.split(':')[4]] = account_alias
+                aws_dict[_role.split(':')[4]] = account_alias
             except:
                 sts = session.client('sts',
                                      aws_access_key_id=saml['Credentials']['AccessKeyId'],
@@ -142,7 +139,7 @@ class Amazon:
                                      aws_session_token=saml['Credentials']['SessionToken'])
 
                 account_id = sts.get_caller_identity().get('Account')
-                aws_dict[role.split(':')[4]] = '{}'.format(account_id)
+                aws_dict[_role.split(':')[4]] = '{}'.format(account_id)
 
         threads = []
         aws_id_alias = {}

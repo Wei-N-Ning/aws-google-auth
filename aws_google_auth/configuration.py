@@ -12,7 +12,7 @@ from aws_google_auth import util
 
 class Configuration(object):
 
-    def __init__(self, **kwargs):
+    def __init__(self):
         self.options = {}
         self.__boto_session = botocore.session.Session()
 
@@ -105,7 +105,8 @@ class Configuration(object):
         assert (self.duration >= 900), "Expected duration to be greater than or equal to 900. Got {}.".format(
             self.duration)
         assert (
-                    self.duration <= self.max_duration), "Expected duration to be less than or equal to max_duration ({}). Got {}.".format(
+                self.duration <= self.max_duration), \
+            "Expected duration to be less than or equal to max_duration ({}). Got {}.".format(
             self.max_duration, self.duration)
 
         # auto_duration
@@ -131,7 +132,7 @@ class Configuration(object):
 
         # password
         try:
-            assert (type(self.password) in [str, unicode]), "Expected password to be a string. Got {}.".format(
+            assert (type(self.password) in [str, ]), "Expected password to be a string. Got {}.".format(
                 type(self.password))
         except NameError:
             assert (type(self.password) is str), "Expected password to be a string. Got {}.".format(
@@ -142,7 +143,8 @@ class Configuration(object):
             assert (self.role_arn.__class__ is str), "Expected role_arn to be None or a string. Got {}.".format(
                 self.role_arn.__class__)
             assert (
-                        "arn:aws:iam::" in self.role_arn or "arn:aws-us-gov:iam::" in self.role_arn), "Expected role_arn to contain 'arn:aws:iam::'. Got '{}'.".format(
+                    "arn:aws:iam::" in self.role_arn or "arn:aws-us-gov:iam::" in self.role_arn), \
+                "Expected role_arn to contain 'arn:aws:iam::'. Got '{}'.".format(
                 self.role_arn)
 
         # u2f_disabled

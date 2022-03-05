@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from __future__ import print_function
 
 import argparse
 import base64
@@ -8,7 +7,6 @@ import sys
 import logging
 
 import keyring
-from six import print_ as print
 from tzlocal import get_localzone
 
 from aws_google_auth import amazon

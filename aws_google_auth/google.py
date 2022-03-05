@@ -15,7 +15,7 @@ import requests
 from PIL import Image
 from bs4 import BeautifulSoup
 from requests import HTTPError
-from six.moves import urllib_parse
+from urllib import parse as urllib_parse
 
 # The U2F USB Library is optional, if it's there, include it.
 try:
@@ -44,6 +44,8 @@ class Google:
         duration_seconds: number of seconds for the session to be active (max 43200)
         """
 
+        self.cont = None
+        self.session = None
         self.version = 'not set'
         self.config = config
         self.base_url = 'https://accounts.google.com'
@@ -165,37 +167,38 @@ class Google:
             return error.text
 
     @staticmethod
-    def find_key_handles(input, challengeTxt):
-        keyHandles = []
-        typeOfInput = type(input)
-        if typeOfInput == dict:  # parse down a dict
-            for item in input:
-                keyHandles.extend(Google.find_key_handles(input[item], challengeTxt))
+    def find_key_handles(_input, challenge_text):
+        key_handles = []
+        type_of_input = type(_input)
+        if type_of_input == dict:  # parse down a dict
+            for item in _input:
+                key_handles.extend(Google.find_key_handles(_input[item], challenge_text))
 
-        elif typeOfInput == list:  # looks like we've hit an array - iterate it
-            array = list(filter(None, input))  # remove any None type objects from the array
+        elif type_of_input == list:  # looks like we've hit an array - iterate it
+            array = list(filter(None, _input))  # remove any None type objects from the array
             for item in array:
-                typeValue = type(item)
-                if typeValue == list:  # another array - recursive call
-                    keyHandles.extend(Google.find_key_handles(item, challengeTxt))
-                elif typeValue == int or typeValue == bool:  # ints bools etc we don't care
+                type_value = type(item)
+                if type_value == list:  # another array - recursive call
+                    key_handles.extend(Google.find_key_handles(item, challenge_text))
+                elif type_value == int or type_value == bool:  # ints bools etc we don't care
                     continue
                 else:  # we went a string or unicode here (python 3.x lost unicode global)
                     try:  # keyHandle string will be base64 encoded -
                         # if its not an exception is thrown and we continue as its not the string we're after
-                        base64UrlEncoded = base64.urlsafe_b64encode(base64.b64decode(item))
-                        if base64UrlEncoded != challengeTxt:  # make sure its not the challengeTxt - if it not return it
-                            keyHandles.append(base64UrlEncoded)
+                        base64_url_encoded = base64.urlsafe_b64encode(base64.b64decode(item))
+                        if base64_url_encoded != challenge_text:
+                            # make sure its not the challengeTxt - if it not return it
+                            key_handles.append(base64_url_encoded)
                     except:
                         pass
-        return keyHandles
+        return key_handles
 
     @staticmethod
-    def find_app_id(inputString):
+    def find_app_id(input_string):
         try:
-            searchResult = re.search('"appid":"[a-z://.-_] + "', inputString).group()
-            searchObject = json.loads('{' + searchResult + '}')
-            return str(searchObject['appid'])
+            search_result = re.search('"appid":"[a-z:/.-_] + "', input_string).group()
+            search_object = json.loads('{' + search_result + '}')
+            return str(search_object['appid'])
         except:
             logging.exception('Was unable to find appid value in googles SAML page')
             sys.exit(1)
@@ -349,7 +352,6 @@ class Google:
         try:
             saml_element = parsed.find('input', {'name': 'SAMLResponse'}).get('value')
         except:
-
             if self.save_failure:
                 logging.error("SAML lookup failed, storing failure page to "
                               "'saml.html' to assist with debugging.")
@@ -357,7 +359,8 @@ class Google:
                     out.write(self.session_state.text.encode('utf-8'))
 
             raise ExpectedGoogleException(
-                'Something went wrong - Could not find SAML response, check your credentials or use --save-failure-html to debug.')
+                'Something went wrong - Could not find SAML response, check your '
+                'credentials or use --save-failure-html to debug.')
 
         return base64.b64decode(saml_element)
 
@@ -484,11 +487,9 @@ class Google:
                         "Insert your U2F device and press enter to try again..."
                     )
                     attempts_remaining -= 1
-
         # If we exceed the number of attempts, raise an error and let the program exit.
         if auth_response is None:
-            raise ExpectedGoogleException(
-                "No U2F device found. Please check your setup.")
+            raise ExpectedGoogleException("No U2F device found. Please check your setup.")
 
         payload = {
             'challengeId':
@@ -764,10 +765,8 @@ class Google:
                 response_page.find('input', {
                     'name': 'gxf'
                 }).get('value'),
-            'phoneNumber':
-                phone_number,
-            'sendMethod':
-                send_method,
+            'phoneNumber': phone_number,
+            'sendMethod': send_method,
         }
 
         # Submit phone number and desired method (SMS or voice call)
