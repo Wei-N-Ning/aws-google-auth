@@ -2,6 +2,7 @@
 
 import argparse
 import base64
+import json
 import logging
 import os
 import shutil
@@ -17,16 +18,22 @@ from aws_google_auth import google
 from aws_google_auth import util
 
 
-def parse_args(args):
+def parse_args(args, conf=None):
+    conf = conf or dict()
+
     parser = argparse.ArgumentParser(
         prog="aws-google-auth",
         description="Acquire temporary AWS credentials via Google SSO",
     )
 
-    parser.add_argument('-u', '--username', help='Google Apps username ($GOOGLE_USERNAME)')
-    parser.add_argument('-I', '--idp-id', help='Google SSO IDP identifier ($GOOGLE_IDP_ID)')
-    parser.add_argument('-S', '--sp-id', help='Google SSO SP identifier ($GOOGLE_SP_ID)')
-    parser.add_argument('-R', '--region', help='AWS region endpoint ($AWS_DEFAULT_REGION)')
+    parser.add_argument('-u', '--username', help='Google Apps username ($GOOGLE_USERNAME)',
+                        default=conf.get('username', None))
+    parser.add_argument('-I', '--idp-id', help='Google SSO IDP identifier ($GOOGLE_IDP_ID)',
+                        default=conf.get('GOOGLE_IDP_ID', None))
+    parser.add_argument('-S', '--sp-id', help='Google SSO SP identifier ($GOOGLE_SP_ID)',
+                        default=conf.get('GOOGLE_SP_ID', None))
+    parser.add_argument('-R', '--region', help='AWS region endpoint ($AWS_DEFAULT_REGION)',
+                        default=conf.get('region', None))
     duration_group = parser.add_mutually_exclusive_group()
     duration_group.add_argument('-d', '--duration', type=int,
                                 help='Credential duration in seconds (defaults to value of $DURATION, then falls back to 43200)')
@@ -184,10 +191,10 @@ class ConfigResolver:
         return config
 
 
-def cli():
+def cli(conf=None):
     try:
         exit_if_unsupported_python()
-        args = parse_args(args=sys.argv[1:])
+        args = parse_args(args=sys.argv[1:], conf=conf)
         config = resolve_config_prod(args)
         process_auth(args, config)
     except google.ExpectedGoogleException as ex:
@@ -302,9 +309,14 @@ def process_auth(args, config):
         config.write(amazon_client)
 
 
-def main():
-    cli()
+def main(conf=None):
+    cli(conf=conf)
 
 
 if __name__ == '__main__':
-    main()
+    conf_file = os.path.expanduser('~/.aws-google-auth/config.json')
+    conf = dict()
+    if os.path.isfile(conf_file):
+        with open(conf_file, 'r') as fp:
+            conf = json.load(fp)
+    main(conf=conf)
