@@ -36,6 +36,8 @@ class Configuration(object):
         self.bg_response = None
         self.account = ""
 
+        self.persist_config = kwargs.get('persist_config', False)
+
     # For the "~/.aws/config" file, we use the format "[profile testing]"
     # for the 'testing' profile. The credential file will just be "[testing]"
     # in that case. See https://docs.aws.amazon.com/cli/latest/userguide/cli-multiple-profiles.html
