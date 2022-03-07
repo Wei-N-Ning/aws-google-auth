@@ -107,7 +107,7 @@ class Configuration(object):
         assert (
                 self.duration <= self.max_duration), \
             "Expected duration to be less than or equal to max_duration ({}). Got {}.".format(
-            self.max_duration, self.duration)
+                self.max_duration, self.duration)
 
         # auto_duration
         assert (self.auto_duration.__class__ is bool), "Expected auto_duration to be a boolean. Got {}.".format(
@@ -145,7 +145,7 @@ class Configuration(object):
             assert (
                     "arn:aws:iam::" in self.role_arn or "arn:aws-us-gov:iam::" in self.role_arn), \
                 "Expected role_arn to contain 'arn:aws:iam::'. Got '{}'.".format(
-                self.role_arn)
+                    self.role_arn)
 
         # u2f_disabled
         assert (self.u2f_disabled.__class__ is bool), "Expected u2f_disabled to be a boolean. Got {}.".format(

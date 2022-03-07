@@ -2,17 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import base64
-import io
 import json
 import logging
 import os
 import re
 import sys
 from datetime import datetime
-from distutils.spawn import find_executable
 
 import requests
-from PIL import Image
 from bs4 import BeautifulSoup
 from requests import HTTPError
 
@@ -384,23 +381,7 @@ class Google:
         captcha_url = "https://accounts.google.com" + captcha_img.find('img').get('src')
         captcha_logintoken_audio = ''
 
-        open_image = True
-
-        # Check if there is a display utility installed as Image.open(f).show() do not raise any exception if not
-        # if neither xv or display are available just display the URL for the user to visit.
-        if os.name == 'posix' and sys.platform != 'darwin':
-            if find_executable('xv') is None and find_executable('display') is None:
-                open_image = False
-
         print("Please visit the following URL to view your CAPTCHA: {}".format(captcha_url))
-
-        if open_image:
-            try:
-                with requests.get(captcha_url) as url:
-                    with io.BytesIO(url.content) as f:
-                        Image.open(f).show()
-            except Exception:
-                pass
 
         captcha_input = input("Captcha (case insensitive): ") or None
 
