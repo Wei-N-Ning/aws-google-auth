@@ -1,9 +1,10 @@
 #!/usr/bin/env python
-
+import configparser
+import os
+import shutil
+import tempfile
 import unittest
 from random import randint
-
-import configparser
 
 from aws_google_auth import configuration
 
@@ -11,7 +12,8 @@ from aws_google_auth import configuration
 class TestConfigurationPersistence(unittest.TestCase):
 
     def setUp(self):
-        self.c = configuration.Configuration()
+        self.root_dir = tempfile.mkdtemp()
+        self.c = configuration.Configuration(root_dir=self.root_dir)
 
         # Pick a profile name that is clear it's for testing. We'll delete it
         # after, but in case something goes wrong we don't want to use
@@ -43,6 +45,8 @@ class TestConfigurationPersistence(unittest.TestCase):
         self.config_parser.remove_section(section_name)
         with open(self.c.config_file, 'w') as config_file:
             self.config_parser.write(config_file)
+        if os.path.isdir(self.root_dir):
+            shutil.rmtree(self.root_dir)
 
     def test_creating_new_profile(self):
         profile_string = configuration.Configuration.config_profile(self.c.profile)
@@ -54,7 +58,8 @@ class TestConfigurationPersistence(unittest.TestCase):
         self.assertEqual(self.config_parser[profile_string].get('region'), self.c.region)
         self.assertEqual(self.config_parser[profile_string].getboolean('google_config.ask_role'), self.c.ask_role)
         self.assertEqual(self.config_parser[profile_string].getboolean('google_config.keyring'), self.c.keyring)
-        self.assertEqual(self.config_parser[profile_string].getboolean('google_config.u2f_disabled'), self.c.u2f_disabled)
+        self.assertEqual(self.config_parser[profile_string].getboolean('google_config.u2f_disabled'),
+                         self.c.u2f_disabled)
         self.assertEqual(self.config_parser[profile_string].getint('google_config.duration'), self.c.duration)
         self.assertEqual(self.config_parser[profile_string].get('google_config.bg_response'), self.c.bg_response)
 
@@ -69,7 +74,7 @@ class TestConfigurationPersistence(unittest.TestCase):
                 self.assertFalse(self.c.password in line)
 
     def test_can_read_all_values(self):
-        test_configuration = configuration.Configuration()
+        test_configuration = configuration.Configuration(root_dir=self.root_dir)
         test_configuration.read(self.c.profile)
 
         # Reading won't get password, so we need to set for the configuration

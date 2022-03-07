@@ -2,9 +2,9 @@
 
 import argparse
 import base64
+import logging
 import os
 import sys
-import logging
 
 import keyring
 from tzlocal import get_localzone
@@ -26,9 +26,12 @@ def parse_args(args):
     parser.add_argument('-S', '--sp-id', help='Google SSO SP identifier ($GOOGLE_SP_ID)')
     parser.add_argument('-R', '--region', help='AWS region endpoint ($AWS_DEFAULT_REGION)')
     duration_group = parser.add_mutually_exclusive_group()
-    duration_group.add_argument('-d', '--duration', type=int, help='Credential duration in seconds (defaults to value of $DURATION, then falls back to 43200)')
-    duration_group.add_argument('--auto-duration', action='store_true', help='Tries to use the longest allowed duration ($AUTO_DURATION)')
-    parser.add_argument('-p', '--profile', help='AWS profile (defaults to value of $AWS_PROFILE, then falls back to \'sts\')')
+    duration_group.add_argument('-d', '--duration', type=int,
+                                help='Credential duration in seconds (defaults to value of $DURATION, then falls back to 43200)')
+    duration_group.add_argument('--auto-duration', action='store_true',
+                                help='Tries to use the longest allowed duration ($AUTO_DURATION)')
+    parser.add_argument('-p', '--profile',
+                        help='AWS profile (defaults to value of $AWS_PROFILE, then falls back to \'sts\')')
     parser.add_argument('-A', '--account', help='Filter for specific AWS account.')
     parser.add_argument('-D', '--disable-u2f', action='store_true', help='Disable U2F functionality.')
     parser.add_argument('-q', '--quiet', action='store_true', help='Quiet output')
@@ -37,15 +40,18 @@ def parse_args(args):
     parser.add_argument('--no-cache', dest="saml_cache", action='store_false', help='Do not cache the SAML Assertion.')
     parser.add_argument('--print-creds', action='store_true', help='Print Credentials.')
     parser.add_argument('--resolve-aliases', action='store_true', help='Resolve AWS account aliases.')
-    parser.add_argument('--save-failure-html', action='store_true', help='Write HTML failure responses to file for troubleshooting.')
-    parser.add_argument('--save-saml-flow', action='store_true', help='Write all GET and PUT requests and HTML responses to/from Google to files for troubleshooting.')
+    parser.add_argument('--save-failure-html', action='store_true',
+                        help='Write HTML failure responses to file for troubleshooting.')
+    parser.add_argument('--save-saml-flow', action='store_true',
+                        help='Write all GET and PUT requests and HTML responses to/from Google to files for troubleshooting.')
 
     role_group = parser.add_mutually_exclusive_group()
     role_group.add_argument('-a', '--ask-role', action='store_true', help='Set true to always pick the role')
     role_group.add_argument('-r', '--role-arn', help='The ARN of the role to assume')
     parser.add_argument('-k', '--keyring', action='store_true', help='Use keyring for storing the password.')
     parser.add_argument('-l', '--log', dest='log_level', choices=['debug',
-                        'info', 'warn'], default='warn', help='Select log level (default: %(default)s)')
+                                                                  'info', 'warn'], default='warn',
+                        help='Select log level (default: %(default)s)')
     parser.add_argument('-V', '--version', action='version',
                         version='%(prog)s {version}'.format(version='not set'))
 
@@ -66,13 +72,123 @@ def exit_if_unsupported_python():
         sys.exit(1)
 
 
+class ConfigResolver:
+    def __init__(self, config_root_dir=None):
+        self.config_root_dir = config_root_dir
+
+    def resolve(self, args):
+        # Shortening Convenience functions
+        coalesce = util.Util.coalesce
+
+        # Create a blank configuration object (has the defaults pre-filled)
+        config = configuration.Configuration(root_dir=self.config_root_dir)
+
+        # Have the configuration update itself via the ~/.aws/config on disk.
+        # Profile (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.profile = coalesce(
+            args.profile,
+            os.getenv('AWS_PROFILE'),
+            config.profile)
+
+        # Now that we've established the profile, we can read the configuration and
+        # fill in all the other variables.
+        config.read(config.profile)
+
+        # Ask Role (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.ask_role = bool(coalesce(
+            args.ask_role,
+            os.getenv('AWS_ASK_ROLE'),
+            config.ask_role))
+
+        # Duration (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.duration = int(coalesce(
+            args.duration,
+            os.getenv('DURATION'),
+            config.duration))
+
+        # Automatic duration (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.auto_duration = coalesce(
+            args.auto_duration,
+            os.getenv('AUTO_DURATION'),
+            config.auto_duration
+        )
+
+        # IDP ID (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.idp_id = coalesce(
+            args.idp_id,
+            os.getenv('GOOGLE_IDP_ID'),
+            config.idp_id)
+
+        # Region (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.region = coalesce(
+            args.region,
+            os.getenv('AWS_DEFAULT_REGION'),
+            config.region)
+
+        # ROLE ARN (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.role_arn = coalesce(
+            args.role_arn,
+            os.getenv('AWS_ROLE_ARN'),
+            config.role_arn)
+
+        # SP ID (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.sp_id = coalesce(
+            args.sp_id,
+            os.getenv('GOOGLE_SP_ID'),
+            config.sp_id)
+
+        # U2F Disabled (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.u2f_disabled = coalesce(
+            args.disable_u2f,
+            os.getenv('U2F_DISABLED'),
+            config.u2f_disabled)
+
+        # Resolve AWS aliases enabled (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.resolve_aliases = coalesce(
+            args.resolve_aliases,
+            os.getenv('RESOLVE_AWS_ALIASES'),
+            config.resolve_aliases)
+
+        # Username (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.username = coalesce(
+            args.username,
+            os.getenv('GOOGLE_USERNAME'),
+            config.username)
+
+        # Account (Option priority = ARGS, ENV_VAR, DEFAULT)
+        config.account = coalesce(
+            args.account,
+            os.getenv('AWS_ACCOUNT'),
+            config.account)
+
+        config.keyring = coalesce(
+            args.keyring,
+            config.keyring)
+
+        config.print_creds = coalesce(
+            args.print_creds,
+            config.print_creds)
+
+        # Quiet
+        config.quiet = coalesce(
+            args.quiet,
+            config.quiet)
+
+        config.bg_response = coalesce(
+            args.bg_response,
+            os.getenv('GOOGLE_BG_RESPONSE'),
+            config.bg_response)
+
+        return config
+
+
 def cli(cli_args):
     try:
         exit_if_unsupported_python()
 
         args = parse_args(args=cli_args)
 
-        config = resolve_config(args)
+        config = resolve_config_prod(args)
         process_auth(args, config)
     except google.ExpectedGoogleException as ex:
         print(ex)
@@ -83,111 +199,12 @@ def cli(cli_args):
         logging.exception(ex)
 
 
-def resolve_config(args):
+def resolve_config_dev(args):
+    return ConfigResolver(config_root_dir=None).resolve(args)
 
-    # Shortening Convenience functions
-    coalesce = util.Util.coalesce
 
-    # Create a blank configuration object (has the defaults pre-filled)
-    config = configuration.Configuration()
-
-    # Have the configuration update itself via the ~/.aws/config on disk.
-    # Profile (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.profile = coalesce(
-        args.profile,
-        os.getenv('AWS_PROFILE'),
-        config.profile)
-
-    # Now that we've established the profile, we can read the configuration and
-    # fill in all the other variables.
-    config.read(config.profile)
-
-    # Ask Role (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.ask_role = bool(coalesce(
-        args.ask_role,
-        os.getenv('AWS_ASK_ROLE'),
-        config.ask_role))
-
-    # Duration (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.duration = int(coalesce(
-        args.duration,
-        os.getenv('DURATION'),
-        config.duration))
-
-    # Automatic duration (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.auto_duration = coalesce(
-        args.auto_duration,
-        os.getenv('AUTO_DURATION'),
-        config.auto_duration
-    )
-
-    # IDP ID (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.idp_id = coalesce(
-        args.idp_id,
-        os.getenv('GOOGLE_IDP_ID'),
-        config.idp_id)
-
-    # Region (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.region = coalesce(
-        args.region,
-        os.getenv('AWS_DEFAULT_REGION'),
-        config.region)
-
-    # ROLE ARN (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.role_arn = coalesce(
-        args.role_arn,
-        os.getenv('AWS_ROLE_ARN'),
-        config.role_arn)
-
-    # SP ID (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.sp_id = coalesce(
-        args.sp_id,
-        os.getenv('GOOGLE_SP_ID'),
-        config.sp_id)
-
-    # U2F Disabled (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.u2f_disabled = coalesce(
-        args.disable_u2f,
-        os.getenv('U2F_DISABLED'),
-        config.u2f_disabled)
-
-    # Resolve AWS aliases enabled (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.resolve_aliases = coalesce(
-        args.resolve_aliases,
-        os.getenv('RESOLVE_AWS_ALIASES'),
-        config.resolve_aliases)
-
-    # Username (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.username = coalesce(
-        args.username,
-        os.getenv('GOOGLE_USERNAME'),
-        config.username)
-
-    # Account (Option priority = ARGS, ENV_VAR, DEFAULT)
-    config.account = coalesce(
-        args.account,
-        os.getenv('AWS_ACCOUNT'),
-        config.account)
-
-    config.keyring = coalesce(
-        args.keyring,
-        config.keyring)
-
-    config.print_creds = coalesce(
-        args.print_creds,
-        config.print_creds)
-
-    # Quiet
-    config.quiet = coalesce(
-        args.quiet,
-        config.quiet)
-
-    config.bg_response = coalesce(
-        args.bg_response,
-        os.getenv('GOOGLE_BG_RESPONSE'),
-        config.bg_response)
-
-    return config
+def resolve_config_prod(args):
+    return ConfigResolver(config_root_dir=None).resolve(args)
 
 
 def process_auth(args, config):

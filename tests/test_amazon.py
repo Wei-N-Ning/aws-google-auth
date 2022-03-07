@@ -1,15 +1,24 @@
 #!/usr/bin/env python
 
+import os
+import shutil
+import tempfile
 import unittest
+from os import path
+
 import mock
 
 from aws_google_auth import amazon
 from aws_google_auth import configuration
-from os import path
-import os
 
 
 class TestAmazon(unittest.TestCase):
+    def setUp(self) -> None:
+        self.root_dir = tempfile.mkdtemp()
+
+    def tearDown(self) -> None:
+        if os.path.isdir(self.root_dir):
+            shutil.rmtree(self.root_dir)
 
     @property
     def valid_config(self):
@@ -17,7 +26,9 @@ class TestAmazon(unittest.TestCase):
             idp_id="IDPID",
             sp_id="SPID",
             username="user@example.com",
-            password="hunter2")
+            password="hunter2",
+            root_dir=self.root_dir
+        )
 
     def read_local_file(self, filename):
         here = path.abspath(path.dirname(__file__))

@@ -36,7 +36,7 @@ class Configuration(object):
         self.bg_response = None
         self.account = ""
 
-        self.persist_config = kwargs.get('persist_config', False)
+        self.root_dir = kwargs.get('root_dir', None)
 
     # For the "~/.aws/config" file, we use the format "[profile testing]"
     # for the 'testing' profile. The credential file will just be "[testing]"
@@ -55,11 +55,17 @@ class Configuration(object):
 
     @property
     def credentials_file(self):
-        return os.path.expanduser(self.__boto_session.get_config_variable('credentials_file'))
+        cre_file = os.path.expanduser(self.__boto_session.get_config_variable('credentials_file'))
+        if not self.root_dir:
+            return cre_file
+        return os.path.join(self.root_dir, cre_file)
 
     @property
     def config_file(self):
-        return os.path.expanduser(self.__boto_session.get_config_variable('config_file'))
+        conf_file = os.path.expanduser(self.__boto_session.get_config_variable('config_file'))
+        if not self.root_dir:
+            return conf_file
+        return os.path.join(self.root_dir, conf_file)
 
     @property
     def saml_cache_file(self):
@@ -69,7 +75,7 @@ class Configuration(object):
         for file in [self.config_file, self.credentials_file]:
             directory = os.path.dirname(file)
             if not os.path.exists(directory):
-                os.mkdir(directory, 0o700)
+                os.makedirs(directory, 0o700, exist_ok=True)
             if not os.path.exists(file):
                 util.Util.touch(file)
 

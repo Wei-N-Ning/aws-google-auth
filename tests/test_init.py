@@ -26,20 +26,19 @@ class TestInit(unittest.TestCase):
         self.assertTrue(mock_cli.called)
 
     @patch('aws_google_auth.exit_if_unsupported_python', spec=True)
-    @patch('aws_google_auth.resolve_config', spec=True)
+    @patch('aws_google_auth.resolve_config_prod', spec=True)
     @patch('aws_google_auth.process_auth', spec=True)
-    def test_main_method_chaining(self, process_auth, resolve_config, exit_if_unsupported_python):
-
+    def test_main_method_chaining(self, process_auth, resolve_config_prod, exit_if_unsupported_python):
         # Create a mock config to be returned from the resolve_config function
         mock_config = Mock()
         # Inject the mock as the return value from the function
-        aws_google_auth.resolve_config.return_value = mock_config
+        aws_google_auth.resolve_config_prod.return_value = mock_config
 
         # Function under test
         aws_google_auth.cli([])
 
         self.assertTrue(exit_if_unsupported_python.called)
-        self.assertTrue(resolve_config.called)
+        self.assertTrue(resolve_config_prod.called)
         self.assertTrue(process_auth.called)
 
         self.assertEqual([call()], exit_if_unsupported_python.mock_calls)
@@ -66,7 +65,7 @@ class TestInit(unittest.TestCase):
                                          bg_response=None,
                                          account=None))
                           ],
-                         resolve_config.mock_calls)
+                         resolve_config_prod.mock_calls)
 
         self.assertEqual([call(Namespace(ask_role=False,
                                          keyring=False,
@@ -97,7 +96,6 @@ class TestInit(unittest.TestCase):
     @patch('aws_google_auth.amazon', spec=True)
     @patch('aws_google_auth.google', spec=True)
     def test_process_auth_standard(self, mock_google, mock_amazon, mock_util):
-
         mock_config = Mock()
         mock_config.profile = False
         mock_config.saml_cache = False
@@ -149,8 +147,10 @@ class TestInit(unittest.TestCase):
                           call.Util.get_input('Google IDP ID: '),
                           call.Util.get_input('Google SP ID: '),
                           call.Util.get_password('Google Password: '),
-                          call.Util.pick_a_role({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'}, [])],
+                          call.Util.pick_a_role({
+                              'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+                              'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'},
+                              [])],
                          mock_util.mock_calls)
 
         self.assertEqual([call.do_login(), call.parse_saml()],
@@ -159,14 +159,16 @@ class TestInit(unittest.TestCase):
         self.assertEqual([call.raise_if_invalid()],
                          mock_config.mock_calls)
 
-        self.assertEqual([call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'
-                                })],
-                         mock_amazon_client.resolve_aws_aliases.mock_calls)
+        self.assertEqual(
+            [call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+                   'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'
+                   })],
+            mock_amazon_client.resolve_aws_aliases.mock_calls)
 
-        self.assertEqual([call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'}, [])
-                          ], mock_util_obj.pick_a_role.mock_calls)
+        self.assertEqual(
+            [call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+                   'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'}, [])
+             ], mock_util_obj.pick_a_role.mock_calls)
 
     @patch('aws_google_auth.util', spec=True)
     @patch('aws_google_auth.amazon', spec=True)
@@ -222,9 +224,10 @@ class TestInit(unittest.TestCase):
                           call.Util.get_input('Google IDP ID: '),
                           call.Util.get_input('Google SP ID: '),
                           call.Util.get_password('Google Password: '),
-                          call.Util.pick_a_role({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'},
-                                                [])],
+                          call.Util.pick_a_role({
+                              'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+                              'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'},
+                              [])],
                          mock_util.mock_calls)
 
         self.assertEqual([call.do_login(), call.parse_saml()],
@@ -251,7 +254,6 @@ class TestInit(unittest.TestCase):
     @patch('aws_google_auth.amazon', spec=True)
     @patch('aws_google_auth.google', spec=True)
     def test_process_auth_specified_role(self, mock_google, mock_amazon, mock_util):
-
         mock_config = Mock()
         mock_config.saml_cache = False
         mock_config.keyring = False
@@ -320,7 +322,6 @@ class TestInit(unittest.TestCase):
     @patch('aws_google_auth.amazon', spec=True)
     @patch('aws_google_auth.google', spec=True)
     def test_process_auth_dont_resolve_alias(self, mock_google, mock_amazon, mock_util):
-
         mock_config = Mock()
         mock_config.saml_cache = False
         mock_config.resolve_aliases = False
@@ -370,8 +371,9 @@ class TestInit(unittest.TestCase):
                           call.Util.get_input('Google IDP ID: '),
                           call.Util.get_input('Google SP ID: '),
                           call.Util.get_password('Google Password: '),
-                          call.Util.pick_a_role({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'})],
+                          call.Util.pick_a_role({
+                              'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+                              'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'})],
                          mock_util.mock_calls)
 
         self.assertEqual([call.do_login(), call.parse_saml()],
@@ -384,15 +386,15 @@ class TestInit(unittest.TestCase):
         self.assertEqual([],
                          mock_amazon_client.resolve_aws_aliases.mock_calls)
 
-        self.assertEqual([call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'})
-                          ], mock_util_obj.pick_a_role.mock_calls)
+        self.assertEqual(
+            [call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+                   'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'})
+             ], mock_util_obj.pick_a_role.mock_calls)
 
     @patch('aws_google_auth.util', spec=True)
     @patch('aws_google_auth.amazon', spec=True)
     @patch('aws_google_auth.google', spec=True)
     def test_process_auth_with_profile(self, mock_google, mock_amazon, mock_util):
-
         mock_config = Mock()
         mock_config.saml_cache = False
         mock_config.keyring = False
@@ -442,8 +444,10 @@ class TestInit(unittest.TestCase):
                           call.Util.get_input('Google IDP ID: '),
                           call.Util.get_input('Google SP ID: '),
                           call.Util.get_password('Google Password: '),
-                          call.Util.pick_a_role({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'}, [])],
+                          call.Util.pick_a_role({
+                              'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+                              'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'},
+                              [])],
                          mock_util.mock_calls)
 
         self.assertEqual([call.do_login(), call.parse_saml()],
@@ -453,20 +457,21 @@ class TestInit(unittest.TestCase):
                           call.write(mock_amazon_client)],
                          mock_config.mock_calls)
 
-        self.assertEqual([call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'
-                                })],
-                         mock_amazon_client.resolve_aws_aliases.mock_calls)
+        self.assertEqual(
+            [call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+                   'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'
+                   })],
+            mock_amazon_client.resolve_aws_aliases.mock_calls)
 
-        self.assertEqual([call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'}, [])
-                          ], mock_util_obj.pick_a_role.mock_calls)
+        self.assertEqual(
+            [call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+                   'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'}, [])
+             ], mock_util_obj.pick_a_role.mock_calls)
 
     @patch('aws_google_auth.util', spec=True)
     @patch('aws_google_auth.amazon', spec=True)
     @patch('aws_google_auth.google', spec=True)
     def test_process_auth_with_saml_cache(self, mock_google, mock_amazon, mock_util):
-
         mock_config = Mock()
         mock_config.saml_cache = True
         mock_config.username = None
@@ -511,9 +516,10 @@ class TestInit(unittest.TestCase):
         self.assertEqual(mock_config.role_arn, "da_role")
 
         # Assert calls occur
-        self.assertEqual([call.Util.pick_a_role({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'}, [])],
-                         mock_util.mock_calls)
+        self.assertEqual([call.Util.pick_a_role(
+            {'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+             'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'}, [])],
+            mock_util.mock_calls)
 
         # Cache means no google calls
         self.assertEqual([],
@@ -522,11 +528,13 @@ class TestInit(unittest.TestCase):
         self.assertEqual([call.write(mock_amazon_client)],
                          mock_config.mock_calls)
 
-        self.assertEqual([call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'
-                                })],
-                         mock_amazon_client.resolve_aws_aliases.mock_calls)
+        self.assertEqual(
+            [call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+                   'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'
+                   })],
+            mock_amazon_client.resolve_aws_aliases.mock_calls)
 
-        self.assertEqual([call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
-                                'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'}, [])
-                          ], mock_util_obj.pick_a_role.mock_calls)
+        self.assertEqual(
+            [call({'arn:aws:iam::123456789012:role/read-only': 'arn:aws:iam::123456789012:saml-provider/GoogleApps',
+                   'arn:aws:iam::123456789012:role/admin': 'arn:aws:iam::123456789012:saml-provider/GoogleApps'}, [])
+             ], mock_util_obj.pick_a_role.mock_calls)
