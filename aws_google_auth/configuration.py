@@ -58,14 +58,14 @@ class Configuration(object):
         cre_file = os.path.expanduser(self.__boto_session.get_config_variable('credentials_file'))
         if not self.root_dir:
             return cre_file
-        return os.path.join(self.root_dir, cre_file)
+        return os.path.join(self.root_dir, cre_file[1:] if cre_file[0] == '/' else cre_file)
 
     @property
     def config_file(self):
         conf_file = os.path.expanduser(self.__boto_session.get_config_variable('config_file'))
         if not self.root_dir:
             return conf_file
-        return os.path.join(self.root_dir, conf_file)
+        return os.path.join(self.root_dir, conf_file[1:] if conf_file[0] == '/' else conf_file)
 
     @property
     def saml_cache_file(self):

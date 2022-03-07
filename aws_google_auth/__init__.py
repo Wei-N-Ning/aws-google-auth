@@ -4,7 +4,9 @@ import argparse
 import base64
 import logging
 import os
+import shutil
 import sys
+import tempfile
 
 import keyring
 from tzlocal import get_localzone
@@ -200,7 +202,10 @@ def cli(cli_args):
 
 
 def resolve_config_dev(args):
-    return ConfigResolver(config_root_dir=None).resolve(args)
+    config_root_dir = tempfile.mkdtemp(prefix="aws_google_auth", suffix="config")
+    if os.path.isdir(config_root_dir):
+        shutil.rmtree(config_root_dir)
+    return ConfigResolver(config_root_dir=config_root_dir).resolve(args)
 
 
 def resolve_config_prod(args):
