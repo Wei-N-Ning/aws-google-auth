@@ -184,12 +184,10 @@ class ConfigResolver:
         return config
 
 
-def cli(cli_args):
+def cli():
     try:
         exit_if_unsupported_python()
-
-        args = parse_args(args=cli_args)
-
+        args = parse_args(args=sys.argv[1:])
         config = resolve_config_prod(args)
         process_auth(args, config)
     except google.ExpectedGoogleException as ex:
@@ -305,8 +303,7 @@ def process_auth(args, config):
 
 
 def main():
-    cli_args = sys.argv[1:]
-    cli(cli_args)
+    cli()
 
 
 if __name__ == '__main__':
